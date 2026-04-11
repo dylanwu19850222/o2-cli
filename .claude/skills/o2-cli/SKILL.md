@@ -1,0 +1,101 @@
+# O2 CLI Trading Tool
+
+**Category**: Trading
+**Severity**: Normal
+**Auto-trigger**: Yes
+
+---
+
+## When to Use
+
+当用户提到以下操作时，使用 O2 CLI 而不是直接调用 API：
+
+- 查询 O2 余额、订单、持仓、市场数据
+- 创建/取消/修改订单
+- 充值/提币操作
+- 账户设置（杠杆、保证金模式）
+- 查看 K 线、订单簿、手续费
+
+---
+
+## Quick Reference
+
+**安装**（首次使用前检查）:
+
+```bash
+which o2 || pip install o2-cli
+```
+
+### 核心规则
+
+1. **`--json` 必须放在命令前面**: `o2 --json balance show` / `o2 balance show --json` ❌
+2. **公开命令无需登录**: `markets list`, `fees rates`
+3. **其他命令需要先登录**: `o2 auth test-login`
+4. **退出码**: 0=成功, 1=失败（错误到 stderr，数据到 stdout）
+
+### 常用命令
+
+```bash
+# 认证
+o2 auth test-login                          # 登录（token 自动保存）
+
+# 市场数据（公开）
+o2 --json markets list                      # 市场列表
+o2 --json markets orderbook --market-id 1   # BTC 订单簿
+o2 --json markets candles --market-id 1 --interval 1h
+
+# 余额
+o2 --json balance show                      # 余额（现金+赠金）
+o2 --json balance history
+
+# 订单
+o2 --json orders create -m 1 -s long -t market -a 0.001       # 市价做多
+o2 --json orders create -m 1 -s short -t limit -a 0.001 -p 85000  # 限价做空
+o2 --json orders list --status open
+o2 --json orders cancel --order-id <ID>
+o2 --json orders cancel-all
+
+# 持仓
+o2 --json positions list
+o2 --json positions close --position-id <ID>
+o2 --json positions risk --market-id 1
+
+# 设置
+o2 --json settings leverage --market-id 1 --leverage 10
+o2 --json settings margin-mode --mode cross
+
+# 充提
+o2 --json deposits address --chain base
+o2 --json withdrawals create --amount 500 --address 0x... --chain ethereum
+
+# 其他
+o2 --json trades list
+o2 --json fees rates
+o2 --json account overview
+o2 --json notifications list
+```
+
+### 参数说明
+
+| 参数 | 含义 | 值 |
+|------|------|-----|
+| `--market-id` / `-m` | 市场 | 1=BTC, 2=ETH |
+| `--side` / `-s` | 方向 | `long` / `short` |
+| `--order-type` / `-t` | 类型 | `market` / `limit` |
+| `--base-amount` / `-a` | 数量 | 实际数量如 0.001 |
+| `--price` / `-p` | 价格 | USDC |
+| `--leverage` / `-l` | 杠杆 | 1-50 |
+
+### 故障排查
+
+- `Cannot connect` → 启动 O2 Backend
+- `Not authenticated` → `o2 auth test-login`
+- `o2: command not found` → `pip install o2-cli`
+
+### 更新
+
+```bash
+o2 update                  # 一键升级 CLI + 刷新 skill + 检查 API 变动
+o2 setup --update          # 仅刷新 skill 文件
+o2 admin api-diff          # 仅检查后端 API 变动
+```

@@ -128,7 +128,9 @@ o2 --json notifications list
 ### 更新
 
 ```bash
-o2 setup --update    # 更新所有已安装工具的 skill 文件
+o2 update                  # 一键升级 CLI + 刷新 skill + 检查 API 变动
+o2 setup --update          # 仅刷新 skill 文件
+o2 admin api-diff          # 仅检查后端 API 变动
 ```
 """
 

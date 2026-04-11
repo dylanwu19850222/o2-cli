@@ -7,6 +7,7 @@ from typing import Optional
 import typer
 
 from o2_cli import __version__, ensure_skill_installed
+from o2_cli.self_update import check_for_update, do_self_update
 
 app = typer.Typer(
     name="o2",
@@ -35,6 +36,9 @@ def main(
     """O2 DEX Trading Platform CLI."""
     # Auto-install Claude Code skill on first run
     ensure_skill_installed()
+    # Non-blocking version check (skip in --json mode to avoid polluting stdout)
+    if not json_output:
+        check_for_update()
     # Store global state for commands to access
     app.state = {
         "json_output": json_output,
@@ -56,6 +60,12 @@ def get_state() -> dict:
         "timeout": 30.0,
         "verbose": False,
     })
+
+
+@app.command()
+def update():
+    """Update o2-cli to the latest version and refresh skills."""
+    do_self_update()
 
 
 # Register command groups
