@@ -9,6 +9,7 @@ from o2_cli.client import O2Client
 from o2_cli.config import load_config, get_active_profile
 from o2_cli.exceptions import APIError, ConnectionError
 from o2_cli.output import OutputFormatter
+from o2_cli.api_sync import check_api_diff
 
 app = typer.Typer(help="Admin operations")
 
@@ -116,6 +117,18 @@ async def _api_keys():
 def reconcile():
     """Trigger order reconciliation."""
     asyncio.run(_reconcile())
+
+
+@app.command("api-diff")
+def api_diff(
+    snapshot: bool = typer.Option(False, "--snapshot", "-s", help="Save current spec as new baseline"),
+):
+    """Check if backend API has changed since last snapshot."""
+    state = get_state()
+    config = load_config()
+    profile = get_active_profile(config)
+    api_url = state.get("api_url") or profile.api_url
+    check_api_diff(api_url, snapshot=snapshot)
 
 
 async def _reconcile():
