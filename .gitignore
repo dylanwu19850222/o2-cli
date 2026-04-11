@@ -21,3 +21,5 @@ ENV/
 .DS_Store
 
 .o2/
+.env
+dist/
