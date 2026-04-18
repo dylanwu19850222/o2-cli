@@ -85,6 +85,7 @@ from o2_cli.commands import (  # noqa: E402
     admin,
     mm,
     setup_cmd,
+    config_cmd,
 )
 
 app.add_typer(auth.app, name="auth", help="Authentication")
@@ -102,3 +103,4 @@ app.add_typer(account.app, name="account", help="Account overview")
 app.add_typer(admin.app, name="admin", help="Admin operations")
 app.add_typer(mm.app, name="mm", help="Market maker control")
 app.add_typer(setup_cmd.app, name="setup", help="Setup for vibe coding tools")
+app.add_typer(config_cmd.app, name="config", help="Configuration & profile management")
