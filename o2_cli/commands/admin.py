@@ -178,12 +178,15 @@ async def _set_bonus(wallet: str, amount: str, reason: str):
     api_url = state.get("api_url") or profile.api_url
     timeout = state.get("timeout") or profile.timeout
 
-    if not profile.token and profile.auth_type == "jwt":
-        formatter.print_error("Not authenticated. Run 'o2 auth test-login' first.")
+    if not profile.token and not profile.api_key_id:
+        formatter.print_error("Not authenticated. Run 'o2 auth test-login' or set API key with 'o2 config set-api-key'.")
         raise typer.Exit(1)
 
     async with O2Client(api_url, timeout) as client:
-        client.set_jwt(profile.token)
+        if profile.token:
+            client.set_jwt(profile.token)
+        if profile.api_key_id:
+            client.set_api_key(profile.api_key_id, profile.api_secret)
         try:
             data = await client.post("/admin/balance/set-bonus", json={
                 "wallet": wallet,

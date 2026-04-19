@@ -100,3 +100,26 @@ def init_production():
     save_config(config, CONFIG_FILE)
     formatter.print_success(f"Production profile created: {PRODUCTION_API_URL}")
     formatter.print_success("Switch with: o2 config use production")
+
+
+@app.command("set-api-key")
+def set_api_key(
+    key_id: str = typer.Option(..., "--key-id", "-k", help="API Key ID"),
+    secret: str = typer.Option(..., "--secret", "-s", help="API Key Secret"),
+    profile_name: str = typer.Option(None, "--profile", "-p", help="Profile name (default: active)"),
+):
+    """Save API Key to a profile for admin/MM operations."""
+    state = get_state()
+    formatter = OutputFormatter(json_mode=state["json_output"])
+    config = load_config(CONFIG_FILE)
+
+    name = profile_name or config.active_profile
+    if name not in config.profiles:
+        formatter.print_error(f"Profile '{name}' not found. Available: {', '.join(config.profiles.keys())}")
+        raise typer.Exit(1)
+
+    config.profiles[name].api_key_id = key_id
+    config.profiles[name].api_secret = secret
+    config.profiles[name].auth_type = "api_key"
+    save_config(config, CONFIG_FILE)
+    formatter.print_success(f"API Key saved to profile '{name}'")
