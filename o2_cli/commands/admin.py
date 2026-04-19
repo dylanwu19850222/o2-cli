@@ -158,3 +158,47 @@ async def _reconcile():
         except ConnectionError as e:
             formatter.print_error(str(e))
             raise typer.Exit(1)
+
+
+@app.command("set-bonus")
+def set_bonus(
+    wallet: str = typer.Option(..., "--wallet", "-w", help="Target wallet address"),
+    amount: str = typer.Option(..., "--amount", "-a", help="Bonus amount in USDC"),
+    reason: str = typer.Option("Admin grant", "--reason", "-r", help="Reason for grant"),
+):
+    """Set user's bonus balance (tradeable, NOT withdrawable). Requires admin JWT."""
+    asyncio.run(_set_bonus(wallet, amount, reason))
+
+
+async def _set_bonus(wallet: str, amount: str, reason: str):
+    state = get_state()
+    formatter = OutputFormatter(json_mode=state["json_output"])
+    config = load_config()
+    profile = get_active_profile(config)
+    api_url = state.get("api_url") or profile.api_url
+    timeout = state.get("timeout") or profile.timeout
+
+    if not profile.token and profile.auth_type == "jwt":
+        formatter.print_error("Not authenticated. Run 'o2 auth test-login' first.")
+        raise typer.Exit(1)
+
+    async with O2Client(api_url, timeout) as client:
+        client.set_jwt(profile.token)
+        try:
+            data = await client.post("/admin/balance/set-bonus", json={
+                "wallet": wallet,
+                "amount": amount,
+                "reason": reason,
+            })
+            formatter.print_raw(data)
+            if not state["json_output"]:
+                result = data.get("data", {})
+                before = result.get("balance_before", {}).get("bonus", "?")
+                after = result.get("balance_after", {}).get("bonus", "?")
+                formatter.print_success(f"Bonus set: {before} -> {after} USDC")
+        except APIError as e:
+            formatter.print_error(str(e), e.code)
+            raise typer.Exit(1)
+        except ConnectionError as e:
+            formatter.print_error(str(e))
+            raise typer.Exit(1)
