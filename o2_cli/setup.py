@@ -36,6 +36,7 @@ SKILL_CONTENT = """\
 **Category**: Trading
 **Severity**: Normal
 **Auto-trigger**: Yes
+**Version**: 0.1.3
 
 ---
 
@@ -44,9 +45,10 @@ SKILL_CONTENT = """\
 当用户提到以下操作时，使用 O2 CLI 而不是直接调用 API：
 
 - 查询 O2 余额、订单、持仓、市场数据
-- 创建/取消/修改订单
+- 创建/取消/修改订单（含批量操作）
 - 充值/提币操作
 - 账户设置（杠杆、保证金模式）
+- 做市商控制（查看状态、启停）
 - 查看 K 线、订单簿、手续费
 
 ---
@@ -61,51 +63,130 @@ which o2 || pip install o2-cli
 
 ### 核心规则
 
-1. **`--json` 必须放在命令前面**: `o2 --json balance show` / `o2 balance show --json` ❌
+1. **`--json` 必须放在命令前面**: `o2 --json balance show` ✅ / `o2 balance show --json` ❌
 2. **公开命令无需登录**: `markets list`, `fees rates`
 3. **其他命令需要先登录**: `o2 auth test-login`
-4. **退出码**: 0=成功, 1=失败（错误到 stderr，数据到 stdout）
+4. **MM/Admin 支持 API Key**: 在 `~/.o2/config.yaml` 设置 `api_key_id` + `api_secret`
+5. **退出码**: 0=成功, 1=失败（错误到 stderr，数据到 stdout）
 
-### 常用命令
+### 认证
 
 ```bash
-# 认证
-o2 auth test-login                          # 登录（token 自动保存）
+o2 auth test-login                          # JWT 登录（token 自动保存）
+o2 auth me                                  # 查看当前用户信息
+o2 auth session                             # 查看会话状态
+```
 
-# 市场数据（公开）
+### 市场数据（公开）
+
+```bash
 o2 --json markets list                      # 市场列表
 o2 --json markets orderbook --market-id 1   # BTC 订单簿
+o2 --json markets trades --market-id 1      # 最近成交
 o2 --json markets candles --market-id 1 --interval 1h
+```
 
-# 余额
+### 余额
+
+```bash
 o2 --json balance show                      # 余额（现金+赠金）
 o2 --json balance history
+```
 
-# 订单
+### 订单（含高级选项）
+
+```bash
+# 基础下单
 o2 --json orders create -m 1 -s long -t market -a 0.001       # 市价做多
 o2 --json orders create -m 1 -s short -t limit -a 0.001 -p 85000  # 限价做空
+
+# 高级选项
+o2 --json orders create -m 1 -s long -t limit -a 0.001 -p 85000 \
+    --position-mode open --margin-mode cross
+o2 --json orders create -m 1 -s short -t limit -a 0.001 -p 86000 \
+    --reduce-only    # 只减仓，不开新仓
+
+# 查询/管理
 o2 --json orders list --status open
 o2 --json orders cancel --order-id <ID>
 o2 --json orders cancel-all
+o2 --json orders modify --order-id <ID> --price 86000        # 改价
+o2 --json orders modify --order-id <ID> --base-amount 0.002   # 改量
 
-# 持仓
+# 批量操作
+o2 --json orders batch --file batch_ops.json
+```
+
+### 持仓
+
+```bash
 o2 --json positions list
+o2 --json positions market --market-id 1
 o2 --json positions close --position-id <ID>
 o2 --json positions risk --market-id 1
+```
 
-# 设置
+### 设置
+
+```bash
+o2 --json settings get                      # 查看当前设置（含持仓模式）
 o2 --json settings leverage --market-id 1 --leverage 10
 o2 --json settings margin-mode --mode cross
+o2 --json settings hedging-mode --mode one_way   # 单向持仓（默认）
+o2 --json settings hedging-mode --mode hedge     # 双向持仓(对冲)
+```
 
-# 充提
+### 充提
+
+```bash
 o2 --json deposits address --chain base
+o2 --json deposits history
 o2 --json withdrawals create --amount 500 --address 0x... --chain ethereum
+o2 --json withdrawals list
+o2 --json withdrawals status --id <ID>
+o2 --json withdrawals cancel --id <ID>
+```
 
-# 其他
+### 其他
+
+```bash
 o2 --json trades list
+o2 --json trades summary
 o2 --json fees rates
+o2 --json fees estimate --amount 0.001 --price 85000
 o2 --json account overview
 o2 --json notifications list
+o2 --json notifications unread
+o2 --json notifications read --id <ID>
+```
+
+### 做市商（MM）
+
+```bash
+o2 --json mm status                         # 查看做市商状态
+o2 --json mm start                          # 启动做市商
+o2 --json mm stop                           # 停止做市商
+o2 --json mm stats                          # 做市商统计
+o2 --json mm orders                         # 当前做市商挂单
+```
+
+### 管理员
+
+```bash
+o2 --json admin gas-status                  # Gas池状态
+o2 --json admin proxy-list                  # 充值代理地址列表
+o2 --json admin api-keys                    # API Key 列表
+o2 --json admin reconcile                   # 触发对账
+o2 admin api-diff                           # 检查后端 API 变动
+o2 admin api-diff --snapshot                # 保存当前 API spec 为基线
+```
+
+### 维护
+
+```bash
+o2 update                                   # 一键升级 CLI + 刷新 skill + 检查 API 变动
+o2 setup --update                           # 仅刷新 skill 文件
+o2 setup --status                           # 查看安装状态
 ```
 
 ### 参数说明
@@ -117,21 +198,36 @@ o2 --json notifications list
 | `--order-type` / `-t` | 类型 | `market` / `limit` |
 | `--base-amount` / `-a` | 数量 | 实际数量如 0.001 |
 | `--price` / `-p` | 价格 | USDC |
-| `--leverage` / `-l` | 杠杆 | 1-50 |
+| `--position-mode` | 持仓模式 | `open` (默认) / `close` |
+| `--margin-mode` | 保证金模式 | `cross` (默认) / `isolated` |
+| `--reduce-only` | 只减仓 | flag (无值) |
+| `--order-id` / `-i` | 订单ID | UUID |
+
+### 认证模式
+
+| 模式 | 适用 | 配置 |
+|------|------|------|
+| JWT | 普通用户 | `o2 auth test-login` (token 自动保存) |
+| API Key | MM / Admin | `~/.o2/config.yaml` 设置 `api_key_id` + `api_secret` |
+
+### 批量操作文件格式
+
+```json
+{
+  "operations": [
+    {"action": "create", "side": "long", "market_id": 1, "order_type": "limit", "base_amount": "0.001", "price": "85000"},
+    {"action": "cancel", "order_id": "xxx"},
+    {"action": "modify", "order_id": "yyy", "price": "86000"}
+  ]
+}
+```
 
 ### 故障排查
 
-- `Cannot connect` → 启动 O2 Backend
+- `Cannot connect` → 启动 O2 Backend: `cd o2-backend && docker compose up -d`
 - `Not authenticated` → `o2 auth test-login`
 - `o2: command not found` → `pip install o2-cli`
-
-### 更新
-
-```bash
-o2 update                  # 一键升级 CLI + 刷新 skill + 检查 API 变动
-o2 setup --update          # 仅刷新 skill 文件
-o2 admin api-diff          # 仅检查后端 API 变动
-```
+- API 返回 4xx → 检查参数格式，用 `--json` 查看详细错误
 """
 
 # Cursor MDC 格式（带 frontmatter）

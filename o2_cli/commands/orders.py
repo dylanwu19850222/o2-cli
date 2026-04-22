@@ -32,7 +32,7 @@ def create(
     position_mode: str = typer.Option(
         "open", "--position-mode", help="Position mode (open/close)"
     ),
-    leverage: Optional[int] = typer.Option(None, "--leverage", "-l", help="Leverage"),
+    # leverage 已移除：使用 'o2 settings leverage' 设置
     margin_mode: str = typer.Option(
         "cross", "--margin-mode", help="Margin mode (cross/isolated)"
     ),
@@ -40,11 +40,11 @@ def create(
         False, "--reduce-only", help="Reduce-only order"
     ),
 ):
-    """Create a new order."""
+    """Create a new order. Leverage is managed via 'o2 settings leverage'."""
     asyncio.run(
         _create(
             market_id, side, order_type, base_amount, price, position_mode,
-            leverage, margin_mode, reduce_only,
+            margin_mode, reduce_only,
         )
     )
 
@@ -56,7 +56,6 @@ async def _create(
     base_amount: str,
     price: Optional[str],
     position_mode: str,
-    leverage: Optional[int],
     margin_mode: str,
     reduce_only: bool,
 ):
@@ -86,8 +85,6 @@ async def _create(
     }
     if price is not None:
         payload["price"] = price
-    if leverage is not None:
-        payload["leverage"] = leverage
 
     async with O2Client(api_url, timeout) as client:
         client.set_jwt(profile.token)

@@ -21,14 +21,6 @@ def test_login():
 async def _test_login():
     profile, formatter, api_url, timeout = resolve_context()
 
-    # Warn if using production — test-login only works in development
-    if "railway.app" in api_url or "production" in api_url:
-        formatter.print_error(
-            "test-login is only available in development mode.\n"
-            "For production, use: o2 auth challenge --wallet <ADDRESS> then o2 auth login"
-        )
-        raise typer.Exit(1)
-
     async with O2Client(api_url, timeout) as client:
         try:
             data = await client.auth_test_login()

@@ -83,7 +83,13 @@ class O2Client:
         if isinstance(body, dict):
             if "success" in body:
                 if not body["success"]:
-                    error_msg = body.get("error") or body.get("message") or "Unknown error"
+                    # BatchOrderResponse uses "errors" (list), standard response uses "error" (string)
+                    error_msg = (
+                        body.get("error")
+                        or body.get("message")
+                        or (body.get("errors") or [{}])[0].get("error")
+                        or "Unknown error"
+                    )
                     error_code = body.get("code")
                     raise APIError(response.status_code, error_msg, error_code)
                 data = body.get("data")
@@ -172,7 +178,7 @@ class O2Client:
         return await self.post("/orders/modify", kwargs)
 
     async def batch_orders(self, operations: list) -> dict:
-        return await self.post("/orders/batch", {"operations": operations})
+        return await self.post("/orders/batch", {"orders": operations})
 
     # ── Positions ─────────────────────────────────────────
 
@@ -272,6 +278,9 @@ class O2Client:
 
     async def set_margin_mode(self, mode: str) -> dict:
         return await self.post("/user-settings/margin-mode", {"margin_mode": mode})
+
+    async def set_hedging_mode(self, mode: str) -> dict:
+        return await self.post("/user-settings/hedging-mode", {"hedging_mode": mode})
 
     # ── Notifications ─────────────────────────────────────
 
