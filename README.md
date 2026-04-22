@@ -1,6 +1,6 @@
 # O2 CLI
 
-Command-line interface for [O2 DEX](https://github.com/dylanwu19850222/lighter-dex) Trading Platform.
+Command-line interface for [O2 DEX](https://github.com/dylanwu19850222/o2) Trading Platform.
 
 ## Install
 
